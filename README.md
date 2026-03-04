@@ -1,5 +1,7 @@
 # IEC 60216-2 고분자 장기 수명 예측
 
+(index.html 파일은 templates 폴더를 생성하고 거기로 옮길 것)
+
 Arrhenius 식과 Arrhenius plot을 사용하며, **IEC 60216-2** 국제 규격을 만족하는 고분자 재료의 장기 수명 예측 도구입니다. TTS(Time-Temperature Superposition) 개념을 적용합니다.
 
 ## 규격 요약 (IEC 60216-2)
@@ -116,3 +118,4 @@ polymer_life/
 2. **PowerShell에서 `&&` 오류** — PowerShell은 `&&` 미지원. `;` 사용: `cd cursorstudy; python polymer_life/app.py`
 3. **`python`을 찾을 수 없음** — 가상환경 활성화(`venv\Scripts\activate`) 후 실행하거나 `py polymer_life/app.py` 시도.
 4. **import 오류** — 반드시 **프로젝트 루트(cursorstudy)**에서 `python polymer_life/app.py` 실행.
+
