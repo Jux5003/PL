@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IEC 60216-2 고분자 장기 수명 예측</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --border: #2d3a4d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --accent: #58a6ff;
+      --success: #3fb950;
+      --warning: #d29922;
+      --danger: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+      line-height: 1.5;
+    }
+    .container { max-width: 960px; margin: 0 auto; }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 {
+      font-size: 1.1rem;
+      margin: 0 0 16px 0;
+      color: var(--accent);
+    }
+    label { display: block; margin-bottom: 4px; font-size: 0.85rem; color: var(--muted); }
+    input, select, button {
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 640px) { .grid { grid-template-columns: 1fr 1fr; } }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      font-weight: 500;
+      margin-right: 8px;
+      margin-top: 8px;
+    }
+    button:hover { opacity: 0.9; }
+    button.secondary { background: var(--border); color: var(--text); }
+    .msg {
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+    .msg.ok { background: rgba(63, 185, 80, 0.15); border: 1px solid var(--success); color: var(--success); }
+    .msg.err { background: rgba(248, 81, 73, 0.15); border: 1px solid var(--danger); color: var(--danger); }
+    .result-box {
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+    }
+    .result-box .row { margin-bottom: 6px; }
+    .result-box .label { color: var(--muted); }
+    canvas { max-height: 320px; margin-top: 12px; }
+    .curve-inputs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .curve-inputs textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: ui-monospace, monospace;
+      font-size: 0.85rem;
+    }
+    .help {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>IEC 60216-2 고분자 장기 수명 예측</h1>
+    <p class="subtitle">Arrhenius equation · TTS · 4온도 평가 · 최저온도 끝점 ML 예측</p>
+
+    <div class="card">
+      <h2>1. 평가 조건 (IEC 60216-2)</h2>
+      <p class="help">4개 온도(최소 10°C 간격), 최고온도 50% 시점 ≥ 100h, 최저온도 50% 시점 ≥ 5000h</p>
+      <div class="grid">
+        <div>
+          <label>온도 1 (최저) °C</label>
+          <input type="number" id="t1" step="0.1" placeholder="예: 140" value="140">
+        </div>
+        <div>
+          <label>온도 2 °C</label>
+          <input type="number" id="t2" step="0.1" placeholder="예: 150" value="150">
+        </div>
+        <div>
+          <label>온도 3 °C</label>
+          <input type="number" id="t3" step="0.1" placeholder="예: 160" value="160">
+        </div>
+        <div>
+          <label>온도 4 (최고) °C</label>
+          <input type="number" id="t4" step="0.1" placeholder="예: 170" value="170">
+        </div>
+      </div>
+      <div class="grid">
+        <div>
+          <label>50% 도달 시간 (h) — 온도1</label>
+          <input type="number" id="h1" step="1" placeholder="비우면 예측" min="0">
+        </div>
+        <div>
+          <label>50% 도달 시간 (h) — 온도2</label>
+          <input type="number" id="h2" step="1" placeholder="예: 2500" min="0" value="2500">
+        </div>
+        <div>
+          <label>50% 도달 시간 (h) — 온도3</label>
+          <input type="number" id="h3" step="1" placeholder="예: 800" min="0" value="800">
+        </div>
+        <div>
+          <label>50% 도달 시간 (h) — 온도4</label>
+          <input type="number" id="h4" step="1" placeholder="예: 200" min="0" value="200">
+        </div>
+      </div>
+      <div style="margin-top:12px">
+        <label>사용 허용 온도 °C (수명 예측용)</label>
+        <input type="number" id="useTemp" step="0.1" placeholder="예: 120" value="120" style="width:120px">
+      </div>
+      <button type="button" id="btnValidate">규격 검증</button>
+      <button type="button" id="btnPredict" class="secondary">최저온도 끝점 예측 (ML)</button>
+      <button type="button" id="btnArrhenius" class="secondary">Arrhenius 피팅 및 수명 예측</button>
+      <div id="validateMsg"></div>
+    </div>
+
+    <div class="card">
+      <h2>2. 최저 온도 부분 데이터 (선택, 3000h 이하)</h2>
+      <p class="help">최저 온도에서 시간-신장율(%) 쌍을 입력하면 곡선 피팅으로 50% 시점을 함께 예측합니다. 한 줄에 하나씩 "시간,신장율" 형식.</p>
+      <div class="curve-inputs">
+        <div>
+          <label>시간 (h) — 쉼표 또는 줄바꿈 구분</label>
+          <textarea id="curveTimes" placeholder="0, 500, 1000, 1500, 2000, 2500, 3000">0
+500
+1000
+1500
+2000
+2500
+3000</textarea>
+        </div>
+        <div>
+          <label>신장율 (%) — 상온 대비</label>
+          <textarea id="curveElong" placeholder="100, 85, 72, 65, 58, 54, 52">100
+85
+72
+65
+58
+54
+52</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>3. 결과</h2>
+      <div id="resultArea"></div>
+      <div id="chartWrap" style="margin-top:16px">
+        <canvas id="arrheniusChart" width="400" height="300"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const base = window.location.origin + window.location.pathname.replace(/\/?$/, '');
+    let arrheniusChart = null;
+
+    function getInputs() {
+      const t1 = document.getElementById('t1').value.trim();
+      const t2 = document.getElementById('t2').value.trim();
+      const t3 = document.getElementById('t3').value.trim();
+      const t4 = document.getElementById('t4').value.trim();
+      const h1 = document.getElementById('h1').value.trim();
+      const h2 = document.getElementById('h2').value.trim();
+      const h3 = document.getElementById('h3').value.trim();
+      const h4 = document.getElementById('h4').value.trim();
+      const useTemp = document.getElementById('useTemp').value.trim();
+      return {
+        temperatures_c: [t1 ? parseFloat(t1) : null, t2 ? parseFloat(t2) : null, t3 ? parseFloat(t3) : null, t4 ? parseFloat(t4) : null],
+        times_h: [h1 ? parseFloat(h1) : null, h2 ? parseFloat(h2) : null, h3 ? parseFloat(h3) : null, h4 ? parseFloat(h4) : null],
+        use_temp_c: useTemp ? parseFloat(useTemp) : null,
+      };
+    }
+
+    function getCurveData() {
+      const rawTimes = document.getElementById('curveTimes').value.trim().split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+      const rawElong = document.getElementById('curveElong').value.trim().split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+      return { curve_times: rawTimes.map(Number), curve_elongation: rawElong.map(Number) };
+    }
+
+    function showValidateMsg(ok, text) {
+      const el = document.getElementById('validateMsg');
+      el.className = 'msg ' + (ok ? 'ok' : 'err');
+      el.textContent = text;
+    }
+
+    function showResult(html) {
+      document.getElementById('resultArea').innerHTML = html;
+    }
+
+    function drawArrheniusChart(fit) {
+      if (!fit || !fit.x || !fit.y) return;
+      const ctx = document.getElementById('arrheniusChart').getContext('2d');
+      if (arrheniusChart) arrheniusChart.destroy();
+      const invT = fit.x.map(x => x * 1e3);
+      arrheniusChart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'ln(t) vs 1/T',
+              data: invT.map((x, i) => ({ x, y: fit.y[i] })),
+              backgroundColor: 'rgba(88, 166, 255, 0.8)',
+              borderColor: '#58a6ff',
+              borderWidth: 1,
+            },
+            {
+              label: '선형 회귀',
+              data: (() => {
+                const minX = Math.min(...invT);
+                const maxX = Math.max(...invT);
+                const slope = fit.slope;
+                const intercept = fit.intercept;
+                return [
+                  { x: minX, y: intercept + (minX * 1e-3) * slope },
+                  { x: maxX, y: intercept + (maxX * 1e-3) * slope },
+                ];
+              })(),
+              borderColor: '#f85149',
+              borderWidth: 2,
+              showLine: true,
+              pointRadius: 0,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            title: { display: true, text: 'Arrhenius Plot (ln t vs 1000/T)', color: '#e6edf3' },
+            legend: { labels: { color: '#e6edf3' } },
+          },
+          scales: {
+            x: {
+              title: { display: true, text: '1000/T (K⁻¹)', color: '#8b949e' },
+              ticks: { color: '#8b949e' },
+              grid: { color: '#2d3a4d' },
+            },
+            y: {
+              title: { display: true, text: 'ln(t / h)', color: '#8b949e' },
+              ticks: { color: '#8b949e' },
+              grid: { color: '#2d3a4d' },
+            },
+          },
+        },
+      });
+    }
+
+    document.getElementById('btnValidate').addEventListener('click', async () => {
+      const d = getInputs();
+      try {
+        const res = await fetch(base + '/api/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ temperatures_c: d.temperatures_c, times_h: d.times_h }),
+        });
+        const data = await res.json();
+        showValidateMsg(data.ok, data.message || (data.ok ? '조건 만족' : '조건 불만족'));
+      } catch (e) {
+        showValidateMsg(false, '요청 실패: ' + e.message);
+      }
+    });
+
+    document.getElementById('btnPredict').addEventListener('click', async () => {
+      const d = getInputs();
+      const curve = getCurveData();
+      try {
+        const res = await fetch(base + '/api/predict_lowest', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            temperatures_c: d.temperatures_c,
+            times_h: d.times_h,
+            curve_times: curve.curve_times.length >= 3 ? curve.curve_times : [],
+            curve_elongation: curve.curve_elongation.length >= 3 ? curve.curve_elongation : [],
+          }),
+        });
+        const data = await res.json();
+        if (!data.ok && data.message) {
+          showResult('<div class="msg err">' + data.message + '</div>');
+          return;
+        }
+        let html = '<div class="result-box">';
+        html += '<div class="row"><span class="label">최저 온도 예측 50% 도달 시간: </span>' + (data.predicted_t50_lowest_h != null ? data.predicted_t50_lowest_h.toFixed(0) + ' h (' + data.predicted_t50_lowest_years.toFixed(2) + '년)' : '-') + '</div>';
+        if (data.arrhenius) {
+          html += '<div class="row"><span class="label">활성화에너지 Ea: </span>' + (data.arrhenius.Ea_kJ_per_mol != null ? data.arrhenius.Ea_kJ_per_mol.toFixed(2) + ' kJ/mol' : '-') + '</div>';
+          html += '<div class="row"><span class="label">R²: </span>' + (data.arrhenius.r_squared != null ? data.arrhenius.r_squared.toFixed(4) : '-') + '</div>';
+        }
+        if (data.curve) {
+          html += '<div class="row"><span class="label">곡선 피팅 모델: </span>' + (data.curve.model || '-') + '</div>';
+        }
+        html += '<div class="row"><span class="label">예측 방식: </span>' + (data.method || 'arrhenius_only') + '</div>';
+        html += '</div>';
+        showResult(html);
+        showValidateMsg(true, '최저 온도 끝점 예측 완료. 위 결과를 확인한 뒤 "Arrhenius 피팅 및 수명 예측"에서 사용온도 수명을 계산하세요.');
+      } catch (e) {
+        showResult('<div class="msg err">요청 실패: ' + e.message + '</div>');
+      }
+    });
+
+    document.getElementById('btnArrhenius').addEventListener('click', async () => {
+      const d = getInputs();
+      const times = d.times_h.map(v => v != null && v !== '' ? v : null);
+      const hasLowest = times[0] != null && times[0] > 0;
+      if (!hasLowest) {
+        showResult('<div class="msg err">Arrhenius 피팅을 하려면 최저 온도 시간을 입력하거나, 먼저 "최저온도 끝점 예측"으로 예측값을 구한 뒤 해당 값을 온도1 50% 도달 시간란에 넣어주세요.</div>');
+        return;
+      }
+      try {
+        const res = await fetch(base + '/api/arrhenius', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            temperatures_c: d.temperatures_c,
+            times_h: d.times_h,
+            use_temp_c: d.use_temp_c,
+          }),
+        });
+        const data = await res.json();
+        if (data.error) {
+          showResult('<div class="msg err">' + data.error + '</div>');
+          return;
+        }
+        const fit = data.fit || {};
+        let html = '<div class="result-box">';
+        html += '<div class="row"><span class="label">Ea: </span>' + (fit.Ea_kJ_per_mol != null ? fit.Ea_kJ_per_mol.toFixed(2) + ' kJ/mol' : '-') + '</div>';
+        html += '<div class="row"><span class="label">R²: </span>' + (fit.r_squared != null ? fit.r_squared.toFixed(4) : '-') + '</div>';
+        if (data.life_at_use_temp_h != null) {
+          html += '<div class="row"><span class="label">사용 온도 예측 수명: </span>' + data.life_at_use_temp_h.toFixed(0) + ' h (' + data.life_at_use_temp_years.toFixed(2) + '년)</div>';
+        }
+        if (data.predicted_t_lowest_h != null) {
+          html += '<div class="row"><span class="label">최저 온도 50% 시간: </span>' + data.predicted_t_lowest_h.toFixed(0) + ' h</div>';
+        }
+        html += '</div>';
+        showResult(html);
+        drawArrheniusChart(fit);
+      } catch (e) {
+        showResult('<div class="msg err">요청 실패: ' + e.message + '</div>');
+      }
+    });
+  </script>
+</body>
+</html>
